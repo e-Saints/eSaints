@@ -1,12 +1,7 @@
 'use client';
-// @ts-nocheck
 
 import { useEffect, useState } from 'react';
-import {
-  useAccount,
-  useWriteContract,
-  usePublicClient,
-} from 'wagmi';
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi';
 import { readContract } from 'viem/actions';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { toast } from 'sonner';
@@ -57,63 +52,53 @@ const nftData = [
 ];
 
 const gatewayUrl = (uri: string) =>
-  uri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+  uri.startsWith('ipfs://') ? uri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/') : uri;
 
 export default function MintPage() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const [isOwner, setIsOwner] = useState(false);
   const { writeContract, isPending } = useWriteContract();
-  const [nfts, setNfts] = useState([]);
+  const [nfts, setNfts] = useState<any[]>([]);
 
   useEffect(() => {
     const checkOwner = async () => {
       if (!address || !publicClient) return;
-
       const ownerAddress = await readContract(publicClient, {
         address: contractAddress,
         abi,
         functionName: 'owner',
       });
-
       if (address.toLowerCase() === ownerAddress.toLowerCase()) {
         setIsOwner(true);
       }
     };
-
     checkOwner();
   }, [address, publicClient]);
 
   useEffect(() => {
-    const loadNFTs = async () => {
-      const rarityMap = {
-        Common: { index: 0, price: 2, color: 'bg-gray-400 text-black' },
-        Rare: { index: 1, price: 8, color: 'bg-blue-400 text-white' },
-        Legendary: { index: 2, price: 12, color: 'bg-purple-500 text-white' },
-        Epic: { index: 3, price: 50, color: 'bg-amber-500 text-black' },
-        Mythic: { index: 4, price: 25, color: 'bg-yellow-400 text-black' },
-      };
+    const rarityMap = {
+      Common: { index: 0, price: 2, color: 'bg-gray-400 text-black' },
+      Rare: { index: 1, price: 8, color: 'bg-blue-400 text-white' },
+      Legendary: { index: 2, price: 12, color: 'bg-purple-500 text-white' },
+      Epic: { index: 3, price: 50, color: 'bg-amber-500 text-black' },
+      Mythic: { index: 4, price: 25, color: 'bg-yellow-400 text-black' },
+    };
 
+    const loadNFTs = async () => {
       const enriched = await Promise.all(
         nftData.map(async (nft) => {
           const res = await fetch(gatewayUrl(`ipfs://${nft.uri}`));
           const meta = await res.json();
-
-          const rarityAttr = meta.attributes.find(
-            (a) => a.trait_type.toLowerCase() === 'rarity'
-          );
+          const rarityAttr = meta.attributes.find((a: any) => a.trait_type.toLowerCase() === 'rarity');
           const rarityName = rarityAttr?.value || 'Common';
           const rarityIndex = rarityMap[rarityName]?.index ?? 0;
-
           const supplyData = await readContract(publicClient, {
             address: contractAddress,
             abi,
             functionName: 'rarities',
             args: [rarityIndex],
           });
-
-          const maxSupply = Number(supplyData[0]);
-          const minted = Number(supplyData[1]);
 
           return {
             ...nft,
@@ -122,16 +107,15 @@ export default function MintPage() {
             rarity: rarityIndex,
             price: rarityMap[rarityName]?.price ?? 2,
             rarityColor: rarityMap[rarityName]?.color ?? 'bg-gray-400 text-black',
-            minted,
-            maxSupply,
+            minted: Number(supplyData[1]),
+            maxSupply: Number(supplyData[0]),
           };
         })
       );
-
       setNfts(enriched);
     };
 
-    loadNFTs();
+    if (publicClient) loadNFTs();
   }, [publicClient]);
 
   return (
@@ -157,7 +141,7 @@ export default function MintPage() {
               </span>
             </h2>
             <p className="mb-2 whitespace-pre-line">{nft.description}</p>
-            {nft.attributes?.map((attr, j) => (
+            {nft.attributes?.map((attr: any, j: number) => (
               <p key={j} className="text-sm">
                 <strong>{attr.trait_type.toLowerCase()}:</strong> {attr.value}
               </p>
@@ -172,7 +156,6 @@ export default function MintPage() {
                   toast.error('Please connect your wallet first.');
                   return;
                 }
-
                 writeContract({
                   address: contractAddress,
                   abi,
@@ -180,17 +163,12 @@ export default function MintPage() {
                   args: [nft.rarity, `ipfs://${nft.uri}`],
                   value: isOwner ? BigInt(0) : BigInt(nft.price * 1e18),
                 });
-
                 toast('Minting started...');
               }}
               disabled={isPending || nft.minted >= nft.maxSupply}
               className="bg-indigo-600 hover:bg-indigo-700 rounded px-4 py-2 font-semibold mt-4 disabled:opacity-50"
             >
-              {nft.minted >= nft.maxSupply
-                ? 'Sold Out'
-                : isPending
-                ? 'Minting...'
-                : 'Mint'}
+              {nft.minted >= nft.maxSupply ? 'Sold Out' : isPending ? 'Minting...' : 'Mint'}
             </button>
           </div>
         ))}
