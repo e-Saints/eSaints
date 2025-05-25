@@ -17,7 +17,7 @@ pnpm-debug.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Build directories
+# Build and cache directories
 dist/
 build/
 .cache/
@@ -35,14 +35,14 @@ coverage/
 .nyc_output/
 report.*.json
 
-# TypeScript
+# TypeScript cache
 *.tsbuildinfo
 
-# ESLint / Stylelint cache
+# Linting cache
 .eslintcache
 .stylelintcache
 
-# Others
+# Miscellaneous
 .rpt2_cache/
 .rts2_cache_*
 .vscode-test
@@ -53,11 +53,11 @@ report.*.json
 .yarn/install-state.gz
 .pnp.*
 
-# REPL
+# REPL history
 .node_repl_history
 
 # NPM pack
 *.tgz
 
-# Ignore macOS and Linux hidden files
+# OS-specific files
 .DS_Store
